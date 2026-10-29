@@ -1,0 +1,20 @@
+:root { color-scheme: light; font-family: system-ui, sans-serif; color: #192c29; background: #f2f6f4; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { min-height: 100dvh; display: grid; place-items: center; padding: 24px 16px; }
+.card { width: 100%; max-width: 480px; background: white; padding: 28px; border: 1px solid #dce6e0; border-radius: 20px; }
+h1 { font-size: 2rem; line-height: 1.15; margin: 12px 0 20px; }
+h2 { font-size: 1.1rem; }
+p { line-height: 1.6; }
+.eyebrow { color: #365f54; font-size: .75rem; letter-spacing: .12em; font-weight: 700; }
+form { display: grid; gap: 10px; margin-top: 24px; }
+label { font-weight: 600; }
+input, button { min-height: 48px; font: inherit; border-radius: 8px; }
+input { width: 100%; padding: 12px; border: 1px solid #899d93; margin-bottom: 10px; }
+button { background: #195e48; color: white; border: 0; padding: 12px 16px; cursor: pointer; font-weight: 600; }
+button.secondary { background: #e6eeea; color: #192c29; }
+:focus-visible { outline: 3px solid #287bce; outline-offset: 3px; }
+.muted { font-size: .85rem; color: #53655d; }
+.error { color: #b42318; }
+.success { color: #195e48; }
+.placeholder { padding: 12px 16px; background: #f2f6f4; border-radius: 10px; margin-top: 24px; }
