@@ -100,7 +100,7 @@ export function SpendingForm({ userId, currency, date, timeZone, categories, sub
         <p className="muted">This is your saved confirmation. Activity shows current details if the purchase was later edited or deleted.</p>
         <div className="home-actions compact">
           <button type="button" onClick={startAnother}>Add another purchase</button>
-          <Link className="nav-link" href={`/?month=${receipt.purchaseDate.slice(0, 7)}`}>Back to this month’s budget</Link>
+          <Link className="nav-link" href="/">Back to home</Link>
           <Link className="nav-link" prefetch={false} href={`/spending/${receipt.id}/edit`}>View current purchase or edit</Link>
         </div>
       </div>

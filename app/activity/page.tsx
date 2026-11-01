@@ -11,7 +11,7 @@ export default async function Activity({ searchParams }: {
 }) {
   const { supabase, user } = await requireOwner();
   const { data: profile } = await supabase.from("profiles").select("currency,time_zone").eq("id", user.id).single();
-  if (!profile) return <section className="card"><p role="alert">Could not load account preferences. Reload to retry.</p><Link className="nav-link" href="/">Budget</Link></section>;
+  if (!profile) return <section className="card"><p role="alert">Could not load account preferences. Reload to retry.</p><Link className="nav-link" href="/">Home</Link></section>;
   const params = await searchParams;
   const month = validMonth(params.month) ? params.month : currentMonth(profile.time_zone);
   const page = activityPage(params.page);
@@ -29,11 +29,8 @@ export default async function Activity({ searchParams }: {
   const href = (target: number) => `/activity?${new URLSearchParams({ month, ...(category ? { category } : {}), page: String(target) })}`;
   return (
     <section className="card budget screen">
-      <Link className="back-link" href={`/?month=${month}`}>← Monthly budget</Link>
+      <Link className="back-link" href="/">← Home</Link>
       <h1>Activity</h1>
-      <div className="home-actions compact">
-        <Link className="primary-link" href="/spending/new">+ Add spending</Link>
-      </div>
       <form method="get" className="action-stack">
         <label>Month<input type="month" name="month" defaultValue={month} min="1900-01" max="9999-12" required /></label>
         <label>Category<select name="category" defaultValue={category}>

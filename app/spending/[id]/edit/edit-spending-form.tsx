@@ -54,7 +54,7 @@ export function EditSpendingForm({ initial, version, currency, categories, userI
       <p>Monthly totals now reflect this change.</p>
       <div className="home-actions compact">
         <Link className="primary-link" prefetch={false} href={`/activity?month=${done.month}`}>View activity</Link>
-        <Link className="nav-link" prefetch={false} href={`/?month=${done.month}`}>View monthly budget</Link>
+        <Link className="nav-link" prefetch={false} href={`/budget?month=${done.month}`}>View monthly budget</Link>
       </div>
     </div>
   );
