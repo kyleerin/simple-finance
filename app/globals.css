@@ -38,6 +38,14 @@ a { color: #195e48; text-underline-offset: 4px; }
 .month-picker input { margin: 0; }
 .total { font-size: 2rem; font-weight: 700; margin: 8px 0; }
 footer { margin-top: 32px; border-top: 1px solid #dce6e0; overflow-wrap: anywhere; }
+.primary-link { display: block; border-radius: 8px; padding: 14px; background: #195e48; color: white; text-decoration: none; text-align: center; font-weight: 600; margin: 20px 0; }
+textarea { font: inherit; min-height: 100px; padding: 12px; border: 1px solid #899d93; border-radius: 8px; width: 100%; resize: vertical; }
+.category-picker { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0 20px; }
+.category-picker legend { font-weight: 600; margin-bottom: 12px; }
+.category-picker label { display: flex; align-items: center; gap: 8px; border: 1px solid #899d93; padding: 12px; border-radius: 8px; min-height: 48px; overflow-wrap: anywhere; max-width: 100%; cursor: pointer; }
+.category-picker input { width: 18px; min-height: 18px; height: 18px; margin: 0; flex: 0 0 18px; accent-color: #195e48; }
+.category-picker .selected { background: #e6eeea; border-color: #195e48; }
+.receipt-note { overflow-wrap: anywhere; white-space: pre-wrap; }
 @media (max-width: 400px) {
   .card { padding: 20px; }
   .month-nav h2 { order: -1; width: 100%; text-align: left; }

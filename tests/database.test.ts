@@ -133,10 +133,63 @@ test("budget migrations, constraints, RPCs and RLS on embedded PostgreSQL", asyn
       assert.equal((await db.query("select * from public.monthly_limits where month = '2026-04-01'")).rows.length, 0);
     });
 
+    // Apply the additive upgrade against an already-populated phase-2 database.
+    await db.exec("reset role");
+    await db.exec(await readFile(new URL("../supabase/migrations/202610280003_spending_entry.sql", import.meta.url), "utf8"));
+    await asUser(owner);
+    const submission = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+    await t.test("spending RPC records once, returns original on retry, and uses purchase date", async () => {
+      const sql = `select * from public.record_spending('${submission}', '${groceries}', 1234, '2026-02-28', ' Lunch ')`;
+      const first = (await db.query(sql)).rows[0] as { id: string; purchase_date: Date; note: string };
+      assert.equal(first.id, submission);
+      assert.equal(first.purchase_date.toISOString().slice(0, 10), "2026-02-28");
+      assert.equal(first.note, "Lunch");
+      assert.deepEqual((await db.query(sql)).rows[0], first);
+      // Different payload with the same ID must return the original, not edit it.
+      assert.deepEqual((await db.query(`select * from public.record_spending('${submission}', '${transport}', 9999, '2026-03-01', null)`)).rows[0], first);
+      assert.equal((await db.query("select * from public.spending_entries")).rows.length, 1);
+      await db.exec(`update public.categories set archived_at = now() where id = '${groceries}'`);
+      assert.deepEqual((await db.query(sql)).rows[0], first);
+      await assert.rejects(db.exec(`select public.record_spending(gen_random_uuid(), '${groceries}', 100, '2026-03-01', null)`));
+      await db.exec(`update public.categories set archived_at = null where id = '${groceries}'`);
+    });
+
+    await t.test("spending enforces amounts, ownership, dates, notes and insert-only privileges", async () => {
+      for (const amount of [0, -1, 100000000000]) {
+        await assert.rejects(db.exec(`select public.record_spending(gen_random_uuid(), '${transport}', ${amount}, '2026-03-01', null)`));
+      }
+      await assert.rejects(db.exec(`select public.record_spending(gen_random_uuid(), '${transport}', 1, '1899-12-31', null)`));
+      await assert.rejects(db.exec(`select public.record_spending(gen_random_uuid(), '${transport}', 1, '2026-03-01', repeat('x', 501))`));
+      await assert.rejects(db.exec(`select public.record_spending(gen_random_uuid(), '${foreignCategory}', 1, '2026-03-01', null)`));
+      await assert.rejects(db.exec(`update public.spending_entries set amount_cents = 1`));
+      await assert.rejects(db.exec("delete from public.spending_entries"));
+      await asUser(other);
+      assert.equal((await db.query("select * from public.spending_entries")).rows.length, 0);
+      await assert.rejects(db.exec(`insert into public.spending_entries (id, owner_id, category_id, amount_cents, purchase_date) values (gen_random_uuid(), '${owner}', '${groceries}', 1, '2026-03-01')`));
+      // Submission IDs are owner-scoped, so guessing another user's ID cannot
+      // reveal a receipt or prevent that owner from recording spending.
+      await db.exec(`select public.record_spending('${submission}', '${foreignCategory}', 500, '2026-03-01', null)`);
+      assert.equal((await db.query("select * from public.spending_entries")).rows.length, 1);
+      await asUser(owner);
+    });
+
+    await t.test("spending alone prevents category deletion and currency changes", async () => {
+      await asUser(other);
+      assert.equal((await db.query("select * from public.monthly_limits")).rows.length, 0);
+      await assert.rejects(db.exec(`delete from public.categories where id = '${foreignCategory}'`));
+      await assert.rejects(db.exec("update public.profiles set currency = 'CAD'"));
+      await db.exec("update public.profiles set time_zone = 'America/New_York'");
+      await db.exec(`update public.categories set archived_at = now() where id = '${foreignCategory}'`);
+      assert.equal((await db.query("select * from public.spending_entries")).rows.length, 1);
+      await asUser(owner);
+    });
+
     await t.test("anonymous requests cannot access tables or invoke mutations", async () => {
       await db.exec("reset role; set role anon; set request.jwt.claim.sub = ''");
       await assert.rejects(db.exec("select * from public.categories"));
       await assert.rejects(db.exec("select * from public.monthly_limits"));
+      await assert.rejects(db.exec("select * from public.spending_entries"));
+      await assert.rejects(db.exec(`select public.record_spending('${submission}', '${groceries}', 1, '2026-03-01', null)`));
       await assert.rejects(db.exec("select public.copy_previous_limits('2026-04-01')"));
       await assert.rejects(db.exec(`select public.move_category('${groceries}', 1)`));
     });

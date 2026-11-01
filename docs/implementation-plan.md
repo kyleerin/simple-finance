@@ -31,7 +31,7 @@ ownership and unique category/month limits in PostgreSQL. No rollover. Offer
 "Copy previous month's limits" without overwriting existing limits silently.
 Missing limits remain explicitly "Not set."
 
-Implemented on `feature/phase-2-budget-setup` for preview acceptance. Includes
+Tested on Vercel and merged by the owner. Includes
 restoring archived categories and deleting categories only when no monthly limits
 reference them. Account preferences set currency/timezone; defaults USD/UTC.
 Currency changes are blocked while any monthly limits exist.
@@ -45,8 +45,22 @@ configured or copied.
 
 Amount and category required; date defaults to today and is editable; note optional.
 Positive purchase amounts only initially. Server validation and idempotent inserts.
-Extend currency-change and category-deletion guards to include spending records,
-not just monthly limits, before adding spending.
+Implemented on `feature/phase-3-spending-entry` for preview acceptance. A dedicated
+mobile entry screen uses an authenticated JSON endpoint and database RPC to record
+spending once per owner/submission ID. Retries return the original receipt even
+if the payload changes or the category has since been archived. Changed retries
+show an explicit warning instead of silently changing saved spending.
+
+Dates default to today in the account timezone; purchase date determines the
+month. Optional notes are trimmed and bounded to 500 characters. A confirmation
+shows saved details, with an explicit "Add another purchase" to allocate a new
+submission ID. Draft/receipt recovery uses per-user tab sessionStorage; there is
+no offline queue or automatic submission. Input stays in memory if storage fails.
+
+Currency and category-deletion guards now include spending, even without monthly
+limits. Categories must be active for new spending; archiving preserves receipts.
+Database privileges permit reading/inserting spending only; phase 4 must add
+ownership policies/privileges and validation for editing/deleting.
 
 ## Phase 4 — Overview and activity
 
@@ -73,6 +87,6 @@ backup/restore verification, and end-to-end security and budget tests.
 ## Branch and review policy
 
 For each phase, create a separate feature branch and open a GitHub PR to the
-default branch. Do not merge without explicit authorization. Phase 1
-was accepted on Vercel and merged by the owner. Implement phase 2 only for now;
+default branch. Do not merge without explicit authorization. Phases 1 and 2
+were accepted on Vercel and merged by the owner. Implement phase 3 only for now;
 use its Vercel preview for owner acceptance before continuing.
