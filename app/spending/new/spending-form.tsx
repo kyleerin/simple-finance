@@ -90,23 +90,25 @@ export function SpendingForm({ userId, currency, date, timeZone, categories, sub
 
   if (receipt) {
     return (
-      <div role="status">
+      <div role="status" className="action-stack">
         <h2 className="success">Spending saved</h2>
         {changedRetry && <p className="error">This submission was already saved with different details. The original is shown below; no second entry was created.</p>}
         <p className="total">{formatMoney(receipt.amountCents, receipt.currency)}</p>
         <p>{receipt.categoryName} · {receipt.purchaseDate}</p>
         {receipt.note && <p className="receipt-note">{receipt.note}</p>}
         <p>Recorded in {receipt.purchaseDate.slice(0, 7)}, based on the purchase date.</p>
-        <Link href={`/?month=${receipt.purchaseDate.slice(0, 7)}`}>Back to this month’s budget</Link>
-        <p><Link prefetch={false} href={`/spending/${receipt.id}/edit`}>View current purchase or edit</Link></p>
         <p className="muted">This is your saved confirmation. Activity shows current details if the purchase was later edited or deleted.</p>
-        <button type="button" onClick={startAnother}>Add another purchase</button>
+        <div className="home-actions compact">
+          <button type="button" onClick={startAnother}>Add another purchase</button>
+          <Link className="nav-link" href={`/?month=${receipt.purchaseDate.slice(0, 7)}`}>Back to this month’s budget</Link>
+          <Link className="nav-link" prefetch={false} href={`/spending/${receipt.id}/edit`}>View current purchase or edit</Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <form onSubmit={submit}>
+    <form onSubmit={submit} className="action-stack">
       <fieldset disabled={pending || !ready}>
         <label>Amount ({currency})
           <input name="amount" inputMode="decimal" autoComplete="off" required
@@ -135,12 +137,14 @@ export function SpendingForm({ userId, currency, date, timeZone, categories, sub
               onChange={(event) => update("note", event.target.value)} />
           </label>
         </details>
-        <button type="submit">{pending ? "Saving…" : "Save spending"}</button>
+        <div className="sticky-actions">
+          <button type="submit">{pending ? "Saving…" : "Save spending"}</button>
+          {deletedSubmission && <button type="button" className="secondary" onClick={startAnother}>Start a new purchase</button>}
+        </div>
       </fieldset>
       <p className="muted">Online only. A purchase is saved only when you see confirmation.
         Unsaved input is kept in this tab where browser storage is available.</p>
       <div aria-live="polite">{error && <p className="error" role="alert">{error}</p>}</div>
-      {deletedSubmission && <button type="button" className="secondary" onClick={startAnother}>Start a new purchase</button>}
     </form>
   );
 }

@@ -14,8 +14,8 @@ export default async function AddSpending() {
       .is("archived_at", null).order("display_order").order("id"),
   ]);
   return (
-    <section className="card">
-      <Link href="/">← Budget</Link>
+    <section className="card screen">
+      <Link className="back-link" href="/">← Budget</Link>
       <p className="eyebrow">SIMPLE FINANCE</p>
       <h1>Add spending</h1>
       {!profile || error ? (
@@ -24,7 +24,10 @@ export default async function AddSpending() {
         <SpendingForm userId={user.id} currency={profile.currency} date={today(profile.time_zone)} timeZone={profile.time_zone}
           categories={categories} submissionId={randomUUID()} />
       ) : (
-        <p>Create or restore a category on your <Link href="/">budget</Link> before recording spending.</p>
+        <div className="action-stack">
+          <p>Create or restore a category on your budget before recording spending.</p>
+          <Link className="primary-link" href="/">Go to budget</Link>
+        </div>
       )}
     </section>
   );
