@@ -86,37 +86,41 @@ export default async function Home({
   }
 
   return (
-    <section className="card budget">
+    <section className="card budget screen">
       <header>
         <p className="eyebrow">SIMPLE FINANCE · {profile.currency}</p>
         <h1>Your monthly budget</h1>
         <p className="muted">Set your category limits. Each month stands alone—no rollover.</p>
-        <Link className="primary-link" href="/spending/new">+ Add spending</Link>
-        <Link href={`/activity?month=${month}`}>View activity</Link>
       </header>
+      {ready && (
+        <div className="hero-balance">
+          <p className="eyebrow">SPENDING LEFT · {profile.currency}</p>
+          <p className={`total${left < 0 ? " error" : ""}`}>{formatMoney(left, profile.currency)}</p>
+          {left < 0 && <p className="error">Over budget for the month</p>}
+          <p>Budgeted: {formatMoney(total, profile.currency)} · Spent: {formatMoney(spent, profile.currency)}</p>
+          {missing > 0 && <p>{missing} categor{missing === 1 ? "y has" : "ies have"} no limit set. This plan is incomplete.</p>}
+        </div>
+      )}
+      <div className="home-actions">
+        <Link className="primary-link" href="/spending/new">+ Add spending</Link>
+        <Link className="nav-link" href={`/activity?month=${month}`}>View activity</Link>
+      </div>
       <nav className="month-nav" aria-label="Budget month">
-        {validMonth(shiftMonth(month, -1)) ? <Link href={`/?month=${shiftMonth(month, -1)}`}>← Previous</Link> : <span />}
+        {validMonth(shiftMonth(month, -1)) ? <Link href={`/?month=${shiftMonth(month, -1)}`}>← Previous month</Link> : <span aria-hidden="true" />}
         <h2>{label}</h2>
-        {validMonth(shiftMonth(month, 1)) ? <Link href={`/?month=${shiftMonth(month, 1)}`}>Next →</Link> : <span />}
+        {validMonth(shiftMonth(month, 1)) ? <Link href={`/?month=${shiftMonth(month, 1)}`}>Next month →</Link> : <span aria-hidden="true" />}
       </nav>
       <form method="get" className="month-picker">
         <label>Choose month<input type="month" name="month" min="1900-01" max="9999-12" defaultValue={month} required /></label>
-        <button className="secondary">Go</button>
+        <button className="secondary">Go to month</button>
       </form>
       {requested && !validMonth(requested) && <p role="alert" className="error">Invalid month. Showing your current month instead.</p>}
       {!ready ? (
         <p role="alert" className="error">Could not load accurate totals. Check your connection and apply the phase-4 migration. Reload to retry.</p>
       ) : (
         <>
-          <div className="placeholder">
-            <p className="eyebrow">SPENDING LEFT · {profile.currency}</p>
-            <p className={`total${left < 0 ? " error" : ""}`}>{formatMoney(left, profile.currency)}</p>
-            {left < 0 && <p className="error">Over budget for the month</p>}
-            <p>Budgeted: {formatMoney(total, profile.currency)} · Spent: {formatMoney(spent, profile.currency)}</p>
-            {missing > 0 && <p>{missing} categor{missing === 1 ? "y has" : "ies have"} no limit set. This plan is incomplete.</p>}
-            <p className="muted">All spending counts, including archived categories and purchases without a limit.
-              Missing-limit warnings include active categories and archived categories with spending.</p>
-          </div>
+          <p className="muted">All spending counts, including archived categories and purchases without a limit.
+            Missing-limit warnings include active categories and archived categories with spending.</p>
           <SpendingChart categories={all} currency={profile.currency} />
           <ActionForm key={`copy-${month}`} action={copyLimits} label="Copy previous month’s limits" secondary hidden={{ month }} />
           <p className="muted">Only fills missing limits for active categories. Existing limits are never overwritten.</p>
@@ -124,7 +128,7 @@ export default async function Home({
           {active.length === 0 && <p>No active categories yet. Add one below to start your budget.</p>}
           {active.map((category, index) => (
             <article key={category.id} className="category">
-              <h3><Link href={`/activity?month=${month}&category=${category.id}`}>{category.name}</Link></h3>
+              <h3><Link className="nav-link" href={`/activity?month=${month}&category=${category.id}`}>{category.name}</Link></h3>
               {categoryBalance(category)}
               <ActionForm key={`${category.id}-${month}`}
                 action={saveLimit} label="Save limit" hidden={{ id: category.id, month }}
@@ -144,8 +148,8 @@ export default async function Home({
               <summary>Archived categories ({archived.length})</summary>
               <p className="muted">Historical limits are preserved. Restore a category to edit its limits.</p>
               {archived.map((category, index) => (
-                <article key={category.id}>
-                  <h3><Link href={`/activity?month=${month}&category=${category.id}`}>{category.name}</Link></h3>
+                <article key={category.id} className="category">
+                  <h3><Link className="nav-link" href={`/activity?month=${month}&category=${category.id}`}>{category.name}</Link></h3>
                   {categoryBalance(category)}
                   {categoryControls(category, index)}
                 </article>

@@ -9,17 +9,21 @@ export default async function Login({
 }) {
   const { error } = await searchParams;
   return (
-    <section className="card">
+    <section className="card screen">
       <p className="eyebrow">PRIVATE · PERSONAL</p>
       <h1>Simple Finance</h1>
       <p>Sign in to your personal budget.</p>
       {error && <p role="alert" className="error">Unable to sign in. Check your credentials and try again.</p>}
-      <form action={signIn}>
-        <label htmlFor="email">Email</label>
-        <input id="email" name="email" type="email" autoComplete="username" required />
-        <label htmlFor="password">Password</label>
-        <input id="password" name="password" type="password" autoComplete="current-password" required />
-        <button type="submit">Sign in</button>
+      <form action={signIn} className="action-stack">
+        <label htmlFor="email">Email
+          <input id="email" name="email" type="email" autoComplete="username" required />
+        </label>
+        <label htmlFor="password">Password
+          <input id="password" name="password" type="password" autoComplete="current-password" required />
+        </label>
+        <div className="sticky-actions">
+          <button type="submit">Sign in</button>
+        </div>
       </form>
       <p className="muted">Access is restricted to the owner. No public registration.</p>
     </section>

@@ -49,15 +49,17 @@ export function EditSpendingForm({ initial, version, currency, categories, userI
   }
 
   if (done) return (
-    <div role="status">
+    <div role="status" className="action-stack">
       <h2>{done.deleted ? "Purchase deleted" : "Purchase updated"}</h2>
       <p>Monthly totals now reflect this change.</p>
-      <p><Link prefetch={false} href={`/activity?month=${done.month}`}>View activity</Link></p>
-      <p><Link prefetch={false} href={`/?month=${done.month}`}>View monthly budget</Link></p>
+      <div className="home-actions compact">
+        <Link className="primary-link" prefetch={false} href={`/activity?month=${done.month}`}>View activity</Link>
+        <Link className="nav-link" prefetch={false} href={`/?month=${done.month}`}>View monthly budget</Link>
+      </div>
     </div>
   );
   return (
-    <form onSubmit={(event) => { event.preventDefault(); void submit(false); }}>
+    <form onSubmit={(event) => { event.preventDefault(); void submit(false); }} className="action-stack">
       <fieldset disabled={pending}>
         <label>Amount ({currency})<input inputMode="decimal" required value={draft.amount} onChange={(event) => update("amount", event.target.value)} /></label>
         <label>Category<select value={draft.categoryId} onChange={(event) => update("categoryId", event.target.value)}>
@@ -65,10 +67,12 @@ export function EditSpendingForm({ initial, version, currency, categories, userI
         </select></label>
         <label>Purchase date<input type="date" required min="1900-01-01" max="9999-12-31" value={draft.purchaseDate} onChange={(event) => update("purchaseDate", event.target.value)} /></label>
         <label>Merchant or note (optional)<textarea maxLength={500} value={draft.note} onChange={(event) => update("note", event.target.value)} /></label>
-        <button type="submit">{pending ? "Saving…" : "Save changes"}</button>
-        <button type="button" className="danger" onClick={() => void submit(true)}>Delete purchase</button>
+        <div className="sticky-actions">
+          <button type="submit">{pending ? "Saving…" : "Save changes"}</button>
+          <button type="button" className="danger" onClick={() => void submit(true)}>Delete purchase</button>
+        </div>
       </fieldset>
-      <div aria-live="polite">{error && <p role="alert" className="error">{error}</p>}</div>
+      <div aria-live="polite">{error && <p className="error" role="alert">{error}</p>}</div>
       <p className="muted">Editing the purchase date moves its spending to that date’s month. Conflicting changes from other tabs will not be overwritten.</p>
     </form>
   );
