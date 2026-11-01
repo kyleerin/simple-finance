@@ -189,6 +189,12 @@ button:disabled { cursor: wait; opacity: .75; }
   min-height: min(40dvh, 18rem);
   flex: 0 0 auto;
 }
+.home-nav {
+  display: grid;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 8px;
+}
 .home-actions .primary-link,
 .home-actions .big-link,
 .home-actions .nav-link,

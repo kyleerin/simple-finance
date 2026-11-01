@@ -1,15 +1,21 @@
 import Link from "next/link";
+import { randomUUID } from "node:crypto";
 import { requireOwner } from "../lib/owner";
 import { currentMonth, formatMoney } from "../lib/budget";
+import { today } from "../lib/spending";
 import { signOut } from "./actions";
 import { spendingLeft, validOverview, type Overview } from "../lib/overview";
+import { SpendingForm } from "./spending/new/spending-form";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const { supabase, user } = await requireOwner();
-  const { data: profile, error: profileError } = await supabase.from("profiles")
-    .select("currency,time_zone").eq("id", user.id).single();
+  const [{ data: profile, error: profileError }, { data: categories, error: categoriesError }] = await Promise.all([
+    supabase.from("profiles").select("currency,time_zone").eq("id", user.id).single(),
+    supabase.from("categories").select("id,name").eq("owner_id", user.id)
+      .is("archived_at", null).order("display_order").order("id"),
+  ]);
   if (profileError || !profile) {
     return (
       <section className="card">
@@ -26,6 +32,7 @@ export default async function Home() {
   const left = ready ? spendingLeft(overview) : 0;
   const label = new Intl.DateTimeFormat("en", { month: "long", year: "numeric", timeZone: "UTC" })
     .format(new Date(`${month}-01T00:00:00Z`));
+  const formReady = !categoriesError;
 
   return (
     <section className="card budget screen">
@@ -42,11 +49,29 @@ export default async function Home() {
           <p role="alert" className="error">Could not load spending left. Check your connection and apply the phase-4 migration. Reload to retry.</p>
         </>
       )}
-      <div className="home-actions">
-        <Link className="primary-link" href="/spending/new">+ Add spending</Link>
+      <h2>Add spending</h2>
+      {!formReady ? (
+        <p role="alert" className="error">Could not load the form. Check your connection and apply the budget migrations, then reload.</p>
+      ) : categories?.length ? (
+        <SpendingForm
+          userId={user.id}
+          currency={profile.currency}
+          date={today(profile.time_zone)}
+          timeZone={profile.time_zone}
+          categories={categories}
+          submissionId={randomUUID()}
+          embedded
+        />
+      ) : (
+        <div className="action-stack">
+          <p>Create or restore a category on your budget before recording spending.</p>
+          <Link className="primary-link" href={`/budget?month=${month}`}>Go to budget</Link>
+        </div>
+      )}
+      <div className="home-nav">
         <Link className="nav-link" href={`/activity?month=${month}`}>View activity</Link>
+        <Link className="back-link" href={`/budget?month=${month}`}>Manage budget</Link>
       </div>
-      <p><Link className="back-link" href={`/budget?month=${month}`}>Manage budget</Link></p>
     </section>
   );
 }
