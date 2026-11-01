@@ -26,7 +26,7 @@ function idField(data: FormData) {
 
 function failure(error: { code?: string }): ActionState {
   if (error.code === "23505") return { error: "That category name already exists, possibly in archived categories." };
-  if (error.code === "23503") return { error: "This category has monthly limits. Archive it instead to preserve history." };
+  if (error.code === "23503") return { error: "This category has limits or spending. Archive it instead to preserve history." };
   return { error: "Could not save. Check your connection and database setup, then try again." };
 }
 
@@ -115,7 +115,7 @@ export async function savePreferences(_: ActionState, data: FormData): Promise<A
   const { data: changed, error } = await supabase.from("profiles")
     .update({ currency, time_zone: timeZone }).eq("id", user.id).select("id");
   if (error?.code === "23514") {
-    return { error: "Currency cannot change while monthly limits exist. Also check the timezone is a full IANA name." };
+    return { error: "Currency cannot change while limits or spending exist. Also check the timezone is a full IANA name." };
   }
   if (error) return failure(error);
   if (!changed?.length) return { error: "Account profile is missing. Check database setup." };

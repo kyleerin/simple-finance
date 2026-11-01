@@ -61,10 +61,10 @@ export default async function Home({
           )}
           <ActionForm action={changeCategory} label={category.archived_at ? "Restore category" : "Archive category"}
             secondary hidden={{ id: category.id, operation: category.archived_at ? "restore" : "archive" }}
-            confirm={category.archived_at ? undefined : "Archive this category? All historical limits will be kept."} />
+            confirm={category.archived_at ? undefined : "Archive this category? All limits and spending history will be kept."} />
           <ActionForm action={changeCategory} label="Delete unused category" secondary
             hidden={{ id: category.id, operation: "delete" }}
-            confirm="Permanently delete this category? This is only allowed if it has no monthly limits." />
+            confirm="Permanently delete this category? This is only allowed if it has no limits or spending." />
         </div>
       </details>
     );
@@ -76,6 +76,7 @@ export default async function Home({
         <p className="eyebrow">SIMPLE FINANCE · {profile.currency}</p>
         <h1>Your monthly budget</h1>
         <p className="muted">Set your category limits. Each month stands alone—no rollover.</p>
+        <Link className="primary-link" href="/spending/new">+ Add spending</Link>
       </header>
       <nav className="month-nav" aria-label="Budget month">
         {validMonth(shiftMonth(month, -1)) ? <Link href={`/?month=${shiftMonth(month, -1)}`}>← Previous</Link> : <span />}
@@ -95,7 +96,8 @@ export default async function Home({
             <p className="eyebrow">TOTAL PLANNED · {profile.currency}</p>
             <p className="total">{formatMoney(total, profile.currency)}</p>
             {missing > 0 && <p>{missing} active categor{missing === 1 ? "y has" : "ies have"} no limit set. This plan is incomplete.</p>}
-            <p className="muted">Includes limits for archived categories. Spending tracking arrives in phase 3.</p>
+            <p className="muted">Includes limits for archived categories. This is planned budget, not money left after spending.
+              Spending totals arrive in phase 4.</p>
           </div>
           <ActionForm key={`copy-${month}`} action={copyLimits} label="Copy previous month’s limits" secondary hidden={{ month }} />
           <p className="muted">Only fills missing limits for active categories. Existing limits are never overwritten.</p>
@@ -135,7 +137,7 @@ export default async function Home({
       )}
       <details className="category">
         <summary>Account preferences</summary>
-        <p className="muted">Choose currency before setting limits; it cannot change while any monthly limits exist.
+        <p className="muted">Choose currency before recording money; it cannot change while any limits or spending exist.
           Timezone controls your default month. Use a full name such as America/New_York.</p>
         <ActionForm key={`${profile.currency}-${profile.time_zone}`} action={savePreferences} label="Save preferences"
           fields={[
