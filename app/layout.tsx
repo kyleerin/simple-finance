@@ -22,8 +22,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <body>
         <Script id="theme-boot" strategy="beforeInteractive">{themeBootScript}</Script>
-        <div className="theme-bar"><ThemeToggle /></div>
         <main>{children}</main>
+        <div className="theme-bar"><ThemeToggle /></div>
       </body>
     </html>
   );
