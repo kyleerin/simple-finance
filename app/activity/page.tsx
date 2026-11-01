@@ -31,9 +31,6 @@ export default async function Activity({ searchParams }: {
     <section className="card budget screen">
       <Link className="back-link" href="/">← Home</Link>
       <h1>Activity</h1>
-      <div className="home-actions compact">
-        <Link className="primary-link" href="/spending/new">+ Add spending</Link>
-      </div>
       <form method="get" className="action-stack">
         <label>Month<input type="month" name="month" defaultValue={month} min="1900-01" max="9999-12" required /></label>
         <label>Category<select name="category" defaultValue={category}>
