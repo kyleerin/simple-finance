@@ -46,6 +46,18 @@ textarea { font: inherit; min-height: 100px; padding: 12px; border: 1px solid #8
 .category-picker input { width: 18px; min-height: 18px; height: 18px; margin: 0; flex: 0 0 18px; accent-color: #195e48; }
 .category-picker .selected { background: #e6eeea; border-color: #195e48; }
 .receipt-note { overflow-wrap: anywhere; white-space: pre-wrap; }
+.balance-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.balance-grid dt { font-size: .8rem; color: #53655d; }
+.balance-grid dd { margin: 6px 0; font-weight: 600; overflow-wrap: anywhere; }
+.balance-note { display: block; font-size: .8rem; margin-top: 4px; }
+.spending-chart { margin: 0; }
+.spending-chart svg { display: block; width: 220px; max-width: 100%; margin: 16px auto; }
+.spending-chart figcaption { color: #53655d; font-size: .85rem; }
+table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+th, td { text-align: left; padding: 12px 4px; border-bottom: 1px solid #dce6e0; overflow-wrap: anywhere; }
+.swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 8px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+button.danger { color: #b42318; background: #fff0ee; border: 1px solid #b42318; }
 @media (max-width: 400px) {
   .card { padding: 20px; }
   .month-nav h2 { order: -1; width: 100%; text-align: left; }

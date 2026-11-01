@@ -45,7 +45,7 @@ configured or copied.
 
 Amount and category required; date defaults to today and is editable; note optional.
 Positive purchase amounts only initially. Server validation and idempotent inserts.
-Implemented on `feature/phase-3-spending-entry` for preview acceptance. A dedicated
+Tested on the owner's phone, deployed, and merged. A dedicated
 mobile entry screen uses an authenticated JSON endpoint and database RPC to record
 spending once per owner/submission ID. Retries return the original receipt even
 if the payload changes or the category has since been archived. Changed retries
@@ -59,8 +59,7 @@ no offline queue or automatic submission. Input stays in memory if storage fails
 
 Currency and category-deletion guards now include spending, even without monthly
 limits. Categories must be active for new spending; archiving preserves receipts.
-Database privileges permit reading/inserting spending only; phase 4 must add
-ownership policies/privileges and validation for editing/deleting.
+Phase 4 extends database privileges/policies for validated updates and soft deletion.
 
 ## Phase 4 — Overview and activity
 
@@ -79,6 +78,21 @@ Overspending reduces the total even when other categories have money left; do no
 sum only positive category balances. Include spending in categories without a
 limit, and label the total as incomplete if any active categories lack limits.
 
+Implemented on `feature/phase-4-overview-activity` for preview acceptance.
+PostgreSQL aggregates the entire month into one JSON overview, independently
+of activity pagination. Missing-limit warnings also include archived categories
+with spending. The SVG pie has a text table and empty/single-category states.
+
+Activity filters by month/category and uses 50-entry pages with stable ordering.
+Editing date/category changes the source-of-truth spending row, not a cached
+balance. Database-incremented versions reject stale edits/deletions. Existing
+archived-category purchases may be corrected without restoring the category.
+
+Deletion is soft: hidden from all totals/activity but retained as a retry
+tombstone. Old creation requests return 410 instead of recreating deleted rows.
+This is not permanent erasure; tombstones still protect currency and category
+history. No restore UI or live push updates is included.
+
 ## Phase 5 — Release hardening
 
 Failure-state/accessibility checks, real-phone workflows, CSV export,
@@ -87,6 +101,6 @@ backup/restore verification, and end-to-end security and budget tests.
 ## Branch and review policy
 
 For each phase, create a separate feature branch and open a GitHub PR to the
-default branch. Do not merge without explicit authorization. Phases 1 and 2
-were accepted on Vercel and merged by the owner. Implement phase 3 only for now;
+default branch. Do not merge without explicit authorization. Phases 1 through 3
+were accepted on Vercel and merged by the owner. Implement phase 4 only for now;
 use its Vercel preview for owner acceptance before continuing.

@@ -115,7 +115,7 @@ export async function savePreferences(_: ActionState, data: FormData): Promise<A
   const { data: changed, error } = await supabase.from("profiles")
     .update({ currency, time_zone: timeZone }).eq("id", user.id).select("id");
   if (error?.code === "23514") {
-    return { error: "Currency cannot change while limits or spending exist. Also check the timezone is a full IANA name." };
+    return { error: "Currency cannot change while limits or spending history (including deleted purchases) exist. Also check the timezone is a full IANA name." };
   }
   if (error) return failure(error);
   if (!changed?.length) return { error: "Account profile is missing. Check database setup." };

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getOwner } from "../../../lib/owner";
 import { parseSpending } from "../../../lib/spending";
 import { saveSpending } from "../../../lib/save-spending";
+import { revalidatePath } from "next/cache";
 
 export async function POST(request: Request) {
   // JSON requires a CORS preflight from other origins; do not accept simple
@@ -17,6 +18,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error instanceof SyntaxError ? "Invalid request." : (error as Error).message }, { status: 400 });
   }
   const result = await saveSpending(owner.supabase, owner.user.id, input);
+  if (result.receipt) revalidatePath("/", "layout");
   return NextResponse.json(result, {
     status: result.status ?? 200,
     headers: { "Cache-Control": "private, no-store" },

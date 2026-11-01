@@ -21,6 +21,7 @@ export function SpendingForm({ userId, currency, date, timeZone, categories, sub
   const [error, setError] = useState("");
   const [receipt, setReceipt] = useState<SpendingReceipt | null>(null);
   const [changedRetry, setChangedRetry] = useState(false);
+  const [deletedSubmission, setDeletedSubmission] = useState(false);
   const storageKey = `simple-finance:spending:${userId}`;
 
   useEffect(() => {
@@ -57,6 +58,7 @@ export function SpendingForm({ userId, currency, date, timeZone, categories, sub
       const result = await response.json();
       if (!response.ok || !result.receipt) {
         setError(result.error ?? "Save not confirmed. Retry this entry.");
+        setDeletedSubmission(response.status === 410);
       } else {
         try {
           sessionStorage.setItem(storageKey, JSON.stringify({
@@ -76,6 +78,16 @@ export function SpendingForm({ userId, currency, date, timeZone, categories, sub
     }
   }
 
+  function startAnother() {
+    const next = blank(crypto.randomUUID(), today(timeZone));
+    try { sessionStorage.setItem(storageKey, JSON.stringify({ draft: next, receipt: null, changedRetry: false })); } catch {}
+    setDraft(next);
+    setReceipt(null);
+    setChangedRetry(false);
+    setDeletedSubmission(false);
+    setError("");
+  }
+
   if (receipt) {
     return (
       <div role="status">
@@ -86,15 +98,9 @@ export function SpendingForm({ userId, currency, date, timeZone, categories, sub
         {receipt.note && <p className="receipt-note">{receipt.note}</p>}
         <p>Recorded in {receipt.purchaseDate.slice(0, 7)}, based on the purchase date.</p>
         <Link href={`/?month=${receipt.purchaseDate.slice(0, 7)}`}>Back to this month’s budget</Link>
-        <p className="muted">Spending totals and activity editing arrive in phase 4.</p>
-        <button type="button" onClick={() => {
-          const next = blank(crypto.randomUUID(), today(timeZone));
-          // Write synchronously before allowing navigation/reload.
-          try { sessionStorage.setItem(storageKey, JSON.stringify({ draft: next, receipt: null, changedRetry: false })); } catch {}
-          setDraft(next);
-          setReceipt(null);
-          setChangedRetry(false);
-        }}>Add another purchase</button>
+        <p><Link prefetch={false} href={`/spending/${receipt.id}/edit`}>View current purchase or edit</Link></p>
+        <p className="muted">This is your saved confirmation. Activity shows current details if the purchase was later edited or deleted.</p>
+        <button type="button" onClick={startAnother}>Add another purchase</button>
       </div>
     );
   }
@@ -134,6 +140,7 @@ export function SpendingForm({ userId, currency, date, timeZone, categories, sub
       <p className="muted">Online only. A purchase is saved only when you see confirmation.
         Unsaved input is kept in this tab where browser storage is available.</p>
       <div aria-live="polite">{error && <p className="error" role="alert">{error}</p>}</div>
+      {deletedSubmission && <button type="button" className="secondary" onClick={startAnother}>Start a new purchase</button>}
     </form>
   );
 }

@@ -184,6 +184,79 @@ test("budget migrations, constraints, RPCs and RLS on embedded PostgreSQL", asyn
       await asUser(owner);
     });
 
+    await db.exec("reset role");
+    await db.exec(await readFile(new URL("../supabase/migrations/202610280004_overview_activity.sql", import.meta.url), "utf8"));
+    await asUser(owner);
+    const unbudgeted = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+    const archivedCategory = "ffffffff-ffff-4fff-8fff-ffffffffffff";
+    const editedPurchase = "99999999-9999-4999-8999-999999999999";
+    await t.test("overview includes overspending, unbudgeted and archived purchases in one snapshot", async () => {
+      await db.exec(`
+        insert into public.categories (id, name) values ('${unbudgeted}', 'Unbudgeted'), ('${archivedCategory}', 'Archived example');
+        insert into public.monthly_limits (category_id, month, amount_cents) values
+          ('${groceries}', '2040-01-01', 10000), ('${transport}', '2040-01-01', 5000);
+        select public.record_spending('${editedPurchase}', '${groceries}', 12000, '2040-01-10', null);
+        select public.record_spending(gen_random_uuid(), '${transport}', 1000, '2040-01-11', null);
+        select public.record_spending(gen_random_uuid(), '${unbudgeted}', 500, '2040-01-12', null);
+        select public.record_spending(gen_random_uuid(), '${archivedCategory}', 700, '2040-01-13', null);
+        update public.categories set archived_at = now() where id = '${archivedCategory}';
+      `);
+      const overview = (await db.query<{ result: { budgeted_cents: number; spent_cents: number; missing_limits: number; categories: { id: string; spent_cents: number; limit_cents: number | null }[] } }>(
+        "select public.budget_overview('2040-01-01') as result",
+      )).rows[0].result;
+      assert.equal(overview.budgeted_cents, 15000);
+      assert.equal(overview.spent_cents, 14200);
+      assert.equal(overview.budgeted_cents - overview.spent_cents, 800);
+      assert.equal(overview.missing_limits, 2);
+      assert.equal(overview.categories.find((category) => category.id === archivedCategory)?.spent_cents, 700);
+      await assert.rejects(db.exec("select public.budget_overview('2040-01-02')"));
+      await asUser(other);
+      const privateResult = (await db.query<{ result: { spent_cents: number } }>("select public.budget_overview('2040-01-01') as result")).rows[0].result;
+      assert.equal(privateResult.spent_cents, 0);
+      await asUser(owner);
+    });
+
+    await t.test("edits move spending between dates/categories and reject stale versions", async () => {
+      const changed = await db.query(`update public.spending_entries set amount_cents = 9000, purchase_date = '2040-02-01', category_id = '${transport}', note = 'Corrected'
+        where id = '${editedPurchase}' and version = 0 returning version`);
+      assert.deepEqual(changed.rows, [{ version: 1 }]);
+      assert.equal((await db.query(`update public.spending_entries set amount_cents = 1 where id = '${editedPurchase}' and version = 0 returning id`)).rows.length, 0);
+      const result = (await db.query<{ value: { spent_cents: number } }>("select public.budget_overview('2040-01-01') as value")).rows[0].value;
+      assert.equal(result.spent_cents, 2200);
+      assert.equal((await db.query<{ value: { spent_cents: number } }>("select public.budget_overview('2040-02-01') as value")).rows[0].value.spent_cents, 9000);
+      await assert.rejects(db.exec(`update public.spending_entries set category_id = '${archivedCategory}' where id = '${editedPurchase}'`));
+      await assert.rejects(db.exec(`update public.spending_entries set owner_id = '${other}' where id = '${editedPurchase}'`));
+      await assert.rejects(db.exec(`update public.spending_entries set version = 0 where id = '${editedPurchase}'`));
+      await assert.rejects(db.exec(`update public.spending_entries set amount_cents = 0 where id = '${editedPurchase}'`));
+      // An archived purchase can still have its amount/note corrected.
+      await db.exec(`update public.spending_entries set amount_cents = 800 where category_id = '${archivedCategory}'`);
+      await asUser(other);
+      assert.equal((await db.query(`update public.spending_entries set note = 'stolen' where id = '${editedPurchase}' returning id`)).rows.length, 0);
+      await asUser(owner);
+    });
+
+    await t.test("soft deletion removes totals and prevents stale save retries from resurrecting purchases", async () => {
+      const deleted = await db.query(`update public.spending_entries set deleted_at = now()
+        where id = '${editedPurchase}' and version = 1 and deleted_at is null returning version`);
+      assert.deepEqual(deleted.rows, [{ version: 2 }]);
+      const retry = (await db.query<{ deleted_at: Date | null; amount_cents: number }>(
+        `select * from public.record_spending('${editedPurchase}', '${groceries}', 12000, '2040-01-10', null)`,
+      )).rows[0];
+      assert.ok(retry.deleted_at);
+      assert.equal(Number(retry.amount_cents), 9000);
+      assert.equal((await db.query<{ value: { spent_cents: number } }>("select public.budget_overview('2040-02-01') as value")).rows[0].value.spent_cents, 0);
+      assert.equal((await db.query(`select * from public.spending_entries where id = '${editedPurchase}' and deleted_at is null`)).rows.length, 0);
+      await assert.rejects(db.exec(`update public.spending_entries set deleted_at = null where id = '${editedPurchase}'`));
+      await assert.rejects(db.exec(`delete from public.spending_entries where id = '${editedPurchase}'`));
+    });
+
+    await t.test("overview aggregates all purchases beyond a PostgREST page boundary", async () => {
+      await db.exec(`insert into public.spending_entries (id, category_id, amount_cents, purchase_date)
+        select gen_random_uuid(), '${groceries}', 1, '2041-01-01' from generate_series(1, 1005)`);
+      const result = (await db.query<{ value: { spent_cents: number } }>("select public.budget_overview('2041-01-01') as value")).rows[0].value;
+      assert.equal(result.spent_cents, 1005);
+    });
+
     await t.test("anonymous requests cannot access tables or invoke mutations", async () => {
       await db.exec("reset role; set role anon; set request.jwt.claim.sub = ''");
       await assert.rejects(db.exec("select * from public.categories"));
@@ -192,6 +265,8 @@ test("budget migrations, constraints, RPCs and RLS on embedded PostgreSQL", asyn
       await assert.rejects(db.exec(`select public.record_spending('${submission}', '${groceries}', 1, '2026-03-01', null)`));
       await assert.rejects(db.exec("select public.copy_previous_limits('2026-04-01')"));
       await assert.rejects(db.exec(`select public.move_category('${groceries}', 1)`));
+      await assert.rejects(db.exec("select public.budget_overview('2040-01-01')"));
+      await assert.rejects(db.exec(`update public.spending_entries set note = 'no'`));
     });
   } finally {
     await db.close();
