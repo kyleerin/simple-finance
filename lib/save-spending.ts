@@ -7,6 +7,7 @@ type SavedSpending = {
   amount_cents: number;
   purchase_date: string;
   note: string | null;
+  deleted_at: string | null;
 };
 
 export async function saveSpending(
@@ -28,6 +29,9 @@ export async function saveSpending(
         : "Save not confirmed. Check your connection and database setup, then retry this entry.",
       status: invalidCategory ? 400 : 503,
     };
+  }
+  if (saved.deleted_at) {
+    return { error: "This purchase was deleted. It was not recreated. Start a new purchase if needed.", status: 410 };
   }
   // Read currency only after the write: it is now protected by spending history.
   const [{ data: profile }, { data: category }] = await Promise.all([

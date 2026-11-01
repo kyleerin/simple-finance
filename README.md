@@ -1,8 +1,8 @@
 # Simple Finance
 
-A private, mobile-first monthly budget tracker. **Phase 3:** private access,
+A private, mobile-first monthly budget tracker. **Phase 4:** private access,
 category management, monthly category limits, account preferences, and manual
-spending entry. Spending totals, charts, and activity editing arrive in phase 4.
+spending entry, plus monthly balances, a spending pie chart, and editable activity.
 
 ## Stack
 
@@ -38,8 +38,8 @@ Use Vercel firewall rules/deployment protection for additional perimeter control
 2. In Authentication settings, disable **Allow new users to sign up**.
 3. Apply the SQL files in `supabase/migrations/` in filename order, once each,
    in the SQL editor (or use your usual Supabase CLI migration workflow).
-   **If phase 2 is already configured, apply only
-   `202610280003_spending_entry.sql`.** Do not rerun earlier migrations.
+   **If phase 3 is already configured, apply only
+   `202610280004_overview_activity.sql`.** Do not rerun earlier migrations.
 4. In Authentication > Users, create your user with an email and password and
    mark the email confirmed. The migration creates a profile automatically.
    Existing users are backfilled if the migration runs after account creation.
@@ -55,7 +55,8 @@ currency and timezone preferences; we do not duplicate password storage.
 - Open **Account preferences** first. Defaults are USD and UTC; supported
   currencies are USD, CAD, EUR, GBP, AUD, and NZD (all two-decimal currencies).
   Use an IANA timezone such as `America/New_York`.
-- Currency cannot change while any monthly limits or spending exist. This is enforced by
+- Currency cannot change while any monthly limits or spending history (including
+  deleted purchases) exist. This is enforced by
   the database as well as the UI's explanatory text. Timezone can be changed.
 - Add categories and set limits for the selected calendar month.
 - Blank amount + **Save limit** removes the limit (**Not set**); `0` is an
@@ -66,9 +67,18 @@ currency and timezone preferences; we do not duplicate password storage.
   Names are unique per owner, ignoring case, including archived categories.
 - Archive categories to retain their limits. Archived categories can be restored.
   Deletion is allowed only for unused categories with no limits or spending.
-- **Total planned** includes all limits for the selected month, including
-  archived categories. It is not a spending balance. Unset active categories
-  are flagged as an incomplete plan.
+- **Spending left** is all monthly limits minus all non-deleted spending for
+  that month, including archived categories and purchases without limits.
+  Overspending in one category reduces the total; we do not clamp it to zero.
+  Negative balances are red with a minus sign and an **Over budget** label.
+- Categories show budgeted/spent/remaining. A missing limit stays **Not set**,
+  not zero. The plan is flagged incomplete if active categories lack limits,
+  or archived categories have spending but no limit.
+- The monthly pie chart contains actual spending by category, not unspent money.
+  A table provides exact amounts and percentages, including archived categories.
+  An empty month shows a no-spending message rather than an empty chart.
+- Totals are aggregated in PostgreSQL over the whole month, not calculated from
+  a paginated activity list. Each page load reads a consistent overview snapshot.
 - There is no rollover or automatic month creation.
 
 ## Record spending
@@ -84,17 +94,41 @@ currency and timezone preferences; we do not duplicate password storage.
 - Tap **Add another purchase** to start a fresh entry with a new submission ID.
   The last confirmation stays available when returning to the form in this tab.
 - If saving fails or confirmation is lost, input and submission ID are retained.
-  Retry the same entry: the database returns the original receipt, never another
-  purchase. If you edited an already-saved retry, the original is shown with a
-  warning; it is not overwritten.
+  Retry the same entry: the database returns the saved row, never another
+  purchase. A retry cannot overwrite a later edit. If details differ, the saved
+  details are shown with a warning. A retry of a deleted purchase returns a
+  deletion message instead of recreating it.
 - Drafts and the last confirmation are stored in **sessionStorage**, per user and
   browser tab, so reloads can safely retry. This stores financial details on that
   device until the tab session ends or browser storage is cleared. If storage
   is unavailable, input/retry protection lasts only while the form stays open.
   This is recovery, not offline synchronization: nothing is queued or sent
   automatically.
-- No spending edits/deletes or history screen yet. **Total planned** remains a
-  budget total, not a remaining balance. Full reporting is phase 4.
+- A cached save confirmation is historical: use its current-purchase link or
+  activity to see later edits/deletion, including edits made in another tab.
+
+## Activity and corrections
+
+- Open **View activity**, or tap a category name in the monthly budget.
+- Filter by calendar month and category, including archived categories.
+  Purchases sort by purchase date, creation time, and ID, with 50 per page.
+- **Edit or delete purchase** opens a form for amount, category, date, and note.
+  Changing the date moves spending between months; changing category moves it
+  between category balances. A purchase in an archived category may keep that
+  category while being corrected, but cannot move into another archived category.
+- Saved changes invalidate overview/activity caches. Follow the confirmation
+  links to see updated totals. Other open tabs refresh when reloaded or revisited;
+  this is not a live push subscription.
+- Stale forms are rejected using a database-incremented version. If another tab
+  already edited/deleted the purchase, reload to review rather than overwrite it.
+  Lost confirmations can also produce a conflict on retry; review the current
+  record before making another change.
+- Delete requires confirmation and removes the purchase from activity, charts,
+  and balances. It is a **soft deletion**, not permanent data erasure: the record
+  is retained as a retry tombstone so an old Add spending request cannot recreate
+  it. There is no restore UI. It still prevents currency changes and permanent
+  deletion of its category. Do not manually hard-delete these rows if old retries
+  may still exist.
 
 ## Run locally
 
@@ -123,7 +157,7 @@ Missing configuration fails closed; it never makes the app public.
 1. Import `kyleerin/simple-finance` into Vercel with the Next.js framework preset.
 2. Set Node.js to **24.x** and add the four environment variables above to the
    **Preview** environment (and Production when deploying main).
-3. Apply the phase-3 migration, then deploy `feature/phase-3-spending-entry` as a preview. Keep the PR unmerged while
+3. Apply the phase-4 migration, then deploy `feature/phase-4-overview-activity` as a preview. Keep the PR unmerged while
    testing. Redeploy after changing environment variables.
 4. Open the preview URL on your phone. Pass the outer gate and sign in.
 5. Confirm **Your monthly budget** appears. Set currency/timezone in account
@@ -172,7 +206,7 @@ Missing configuration fails closed; it never makes the app public.
 7. In another tab, archive the selected category before saving. The request
    must fail; keep the amount/note and select another active category to retry.
 8. Backdate a purchase to the previous month. Verify the confirmation links to
-   that month and the database preserves that date. Totals are not yet shown.
+   that month and the database preserves that date. Verify spending in that month.
 9. With spending in a category that has no monthly limits, try deleting it:
    deletion must fail. Archiving must retain the spending. Currency changes
    must be rejected even if there are no limits anywhere.
@@ -181,11 +215,39 @@ Missing configuration fails closed; it never makes the app public.
 11. Check the no-active-category state using a disposable account/project with
     no active categories. Do not archive your real categories just for this test.
 
+### Phase-4 acceptance checklist
+
+1. In a test month, set category A to `100` and category B to `50`. Spend `120`
+   in A and `10` in B: spending left is `20`, not `40`. A shows `-20` in red
+   with **Over budget**, and B shows `40` remaining.
+2. Add `5` in a category without a limit. Spending left becomes `15`; the plan
+   warns that a limit is missing. The purchase must appear in the chart/table.
+3. Archive that category. Its spending still counts in balances, chart, and
+   activity, and the missing-limit warning remains while it has spending.
+4. Verify a month with no purchases has no pie chart; a month with one spending
+   category has a full circle and 100% in its text breakdown.
+5. Filter activity by month/category; tap a category on the budget to reach its
+   filtered purchases. Check dates, notes, and archived-category labels.
+6. Edit a purchase’s amount/category and confirm new totals. Move its purchase
+   date across a month boundary: both months should reflect the correction.
+7. Open the same purchase in two tabs. Save tab 1, then try saving tab 2:
+   tab 2 must show a conflict, retain its input, and not overwrite tab 1.
+8. Cancel a delete and verify nothing changes. Confirm deletion and verify the
+   purchase disappears from activity/chart and no longer reduces spending left.
+   Its row remains in Supabase with `deleted_at` and a higher `version`.
+9. In a test environment, retry that deleted purchase’s old Add spending request
+   with its original submission ID: it must return 410 and never recreate it.
+10. Correct a purchase in an archived category without changing category. Moving
+    a different purchase into that archived category must fail.
+11. With over 50 purchases in a test project/month, check Next/Previous pages
+    and filter retention. Totals and pie must include every page’s purchases.
+12. Sign out in another tab, then attempt edit/delete. Confirm sign-in is required
+    and unsaved form input is retained.
+
 Preview and production share data if they use the same Supabase project.
-The phase-3 migration is additive and compatible with the phase-2 application,
-but preview spending is real data and has no delete UI yet. Use a separate
-Supabase project for isolated testing; do not record fake spending in your real
-budget unless you intend to remove those test records through Supabase.
+The phase-4 migration preserves existing data, but preview edits/deletions are
+real changes. Use a separate Supabase project or genuine corrections for testing.
+Soft-deleted financial details remain in the database; this is not a purge.
 
 Email/password sign-in does not need an OAuth callback or email redirect URL.
 Do not put credentials into GitHub comments, screenshots, or committed files.
@@ -204,11 +266,15 @@ Tests cover access rules, amount/month/name validation, timezone boundaries,
 and real migration SQL on embedded PostgreSQL (PGlite). Database tests use a
 minimal Supabase identity shim to check RLS under separate owner/anonymous roles,
 foreign keys, archiving, reordering, copy semantics, currency protections, and
-spending idempotency/ownership. The phase-3 SQL is also applied to a populated
-phase-2 database. Unit tests cover spending validation, receipt matching, and
+spending idempotency/ownership. Upgrade SQL is applied to populated earlier-phase
+databases. Tests cover SQL totals beyond 1,000 purchases, unbudgeted/archived
+spending, month-changing edits, stale versions, tombstones, and ownership.
+Unit/render tests cover balances, pie-chart empty/single/multiple states,
+pagination/date boundaries, spending validation, receipt matching, and
 tab-draft restoration. Service tests use the real Supabase SDK with a mocked
-PostgREST transport to check singular RPC responses, changed retries, and
-unconfirmed-save recovery. Concurrent retries are serialized by a database advisory
+PostgREST transport to check RPC responses, owner/version filters, changed
+retries, deleted retries, mutation conflicts, and unconfirmed-save recovery.
+Concurrent retries are serialized by a database advisory
 lock; embedded tests exercise sequential retries, not multi-connection concurrency.
 They do not validate Supabase's live Auth/PostgREST integration or a real phone.
 The Vercel checklist above is the manual integration acceptance test.

@@ -4,11 +4,12 @@ import { amountInput, CURRENCIES, currentMonth, formatMoney, shiftMonth, validMo
 import { signOut } from "./actions";
 import { addCategory, changeCategory, copyLimits, saveLimit, savePreferences } from "./budget-actions";
 import { ActionForm } from "./action-form";
+import { spendingLeft, validOverview, type CategorySummary, type Overview } from "../lib/overview";
+import { SpendingChart } from "./spending-chart";
 
 export const dynamic = "force-dynamic";
 
-type Category = { id: string; name: string; archived_at: string | null };
-type Limit = { category_id: string; amount_cents: number };
+type Category = CategorySummary;
 
 export default async function Home({
   searchParams,
@@ -29,18 +30,18 @@ export default async function Home({
   }
   const requested = (await searchParams).month;
   const month = requested && validMonth(requested) ? requested : currentMonth(profile.time_zone);
-  const [{ data: categories, error: categoryError }, { data: limits, error: limitError }] = await Promise.all([
-    supabase.from("categories").select("id,name,archived_at").eq("owner_id", user.id)
-      .order("display_order").order("id"),
-    supabase.from("monthly_limits").select("category_id,amount_cents").eq("owner_id", user.id).eq("month", `${month}-01`),
-  ]);
-  const ready = !categoryError && !limitError;
-  const all = (categories ?? []) as Category[];
+  const { data, error: overviewError } = await supabase.rpc("budget_overview", { target_month: `${month}-01` });
+  const overview: Overview | null = validOverview(data) ? data : null;
+  const ready = !overviewError && overview !== null;
+  const all = ready ? overview.categories : [];
   const active = all.filter((category) => !category.archived_at);
   const archived = all.filter((category) => category.archived_at);
-  const amounts = new Map((limits ?? []).map((limit: Limit) => [limit.category_id, Number(limit.amount_cents)]));
-  const total = [...amounts.values()].reduce((sum, amount) => sum + amount, 0);
-  const missing = active.filter((category) => !amounts.has(category.id)).length;
+  const amounts = new Map(all.filter((category) => category.limit_cents !== null)
+    .map((category) => [category.id, category.limit_cents!]));
+  const total = ready ? overview.budgeted_cents : 0;
+  const spent = ready ? overview.spent_cents : 0;
+  const left = ready ? spendingLeft(overview) : 0;
+  const missing = ready ? overview.missing_limits : 0;
   const label = new Intl.DateTimeFormat("en", { month: "long", year: "numeric", timeZone: "UTC" })
     .format(new Date(`${month}-01T00:00:00Z`));
 
@@ -70,6 +71,20 @@ export default async function Home({
     );
   }
 
+  function categoryBalance(category: Category) {
+    const remaining = category.limit_cents === null ? null : category.limit_cents - category.spent_cents;
+    return (
+      <dl className="balance-grid">
+        <div><dt>Budgeted</dt><dd>{category.limit_cents === null ? "Not set" : formatMoney(category.limit_cents, profile!.currency)}</dd></div>
+        <div><dt>Spent</dt><dd>{formatMoney(category.spent_cents, profile!.currency)}</dd></div>
+        <div><dt>Remaining</dt><dd className={remaining !== null && remaining < 0 ? "error" : undefined}>
+          {remaining === null ? "Limit not set" : formatMoney(remaining, profile!.currency)}
+          {remaining !== null && remaining < 0 && <span className="balance-note">Over budget</span>}
+        </dd></div>
+      </dl>
+    );
+  }
+
   return (
     <section className="card budget">
       <header>
@@ -77,6 +92,7 @@ export default async function Home({
         <h1>Your monthly budget</h1>
         <p className="muted">Set your category limits. Each month stands alone—no rollover.</p>
         <Link className="primary-link" href="/spending/new">+ Add spending</Link>
+        <Link href={`/activity?month=${month}`}>View activity</Link>
       </header>
       <nav className="month-nav" aria-label="Budget month">
         {validMonth(shiftMonth(month, -1)) ? <Link href={`/?month=${shiftMonth(month, -1)}`}>← Previous</Link> : <span />}
@@ -89,24 +105,27 @@ export default async function Home({
       </form>
       {requested && !validMonth(requested) && <p role="alert" className="error">Invalid month. Showing your current month instead.</p>}
       {!ready ? (
-        <p role="alert" className="error">Could not load budgets. Check your connection and confirm the phase-2 migration is applied. Reload to retry.</p>
+        <p role="alert" className="error">Could not load accurate totals. Check your connection and apply the phase-4 migration. Reload to retry.</p>
       ) : (
         <>
           <div className="placeholder">
-            <p className="eyebrow">TOTAL PLANNED · {profile.currency}</p>
-            <p className="total">{formatMoney(total, profile.currency)}</p>
-            {missing > 0 && <p>{missing} active categor{missing === 1 ? "y has" : "ies have"} no limit set. This plan is incomplete.</p>}
-            <p className="muted">Includes limits for archived categories. This is planned budget, not money left after spending.
-              Spending totals arrive in phase 4.</p>
+            <p className="eyebrow">SPENDING LEFT · {profile.currency}</p>
+            <p className={`total${left < 0 ? " error" : ""}`}>{formatMoney(left, profile.currency)}</p>
+            {left < 0 && <p className="error">Over budget for the month</p>}
+            <p>Budgeted: {formatMoney(total, profile.currency)} · Spent: {formatMoney(spent, profile.currency)}</p>
+            {missing > 0 && <p>{missing} categor{missing === 1 ? "y has" : "ies have"} no limit set. This plan is incomplete.</p>}
+            <p className="muted">All spending counts, including archived categories and purchases without a limit.
+              Missing-limit warnings include active categories and archived categories with spending.</p>
           </div>
+          <SpendingChart categories={all} currency={profile.currency} />
           <ActionForm key={`copy-${month}`} action={copyLimits} label="Copy previous month’s limits" secondary hidden={{ month }} />
           <p className="muted">Only fills missing limits for active categories. Existing limits are never overwritten.</p>
           <h2>Categories</h2>
           {active.length === 0 && <p>No active categories yet. Add one below to start your budget.</p>}
           {active.map((category, index) => (
             <article key={category.id} className="category">
-              <h3>{category.name}</h3>
-              <p>{amounts.has(category.id) ? formatMoney(amounts.get(category.id)!, profile.currency) : "Not set"}</p>
+              <h3><Link href={`/activity?month=${month}&category=${category.id}`}>{category.name}</Link></h3>
+              {categoryBalance(category)}
               <ActionForm key={`${category.id}-${month}`}
                 action={saveLimit} label="Save limit" hidden={{ id: category.id, month }}
                 fields={[{ name: "amount", label: `Monthly limit (${profile.currency})`, decimal: true,
@@ -126,8 +145,8 @@ export default async function Home({
               <p className="muted">Historical limits are preserved. Restore a category to edit its limits.</p>
               {archived.map((category, index) => (
                 <article key={category.id}>
-                  <h3>{category.name}</h3>
-                  <p>{amounts.has(category.id) ? formatMoney(amounts.get(category.id)!, profile.currency) : "Not set"} for {label}</p>
+                  <h3><Link href={`/activity?month=${month}&category=${category.id}`}>{category.name}</Link></h3>
+                  {categoryBalance(category)}
                   {categoryControls(category, index)}
                 </article>
               ))}
@@ -137,7 +156,7 @@ export default async function Home({
       )}
       <details className="category">
         <summary>Account preferences</summary>
-        <p className="muted">Choose currency before recording money; it cannot change while any limits or spending exist.
+        <p className="muted">Choose currency before recording money; it cannot change while limits or spending history exist, including deleted purchases.
           Timezone controls your default month. Use a full name such as America/New_York.</p>
         <ActionForm key={`${profile.currency}-${profile.time_zone}`} action={savePreferences} label="Save preferences"
           fields={[
