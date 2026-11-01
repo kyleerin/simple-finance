@@ -129,6 +129,9 @@ currency and timezone preferences; we do not duplicate password storage.
   it. There is no restore UI. It still prevents currency changes and permanent
   deletion of its category. Do not manually hard-delete these rows if old retries
   may still exist.
+- **Settings → Reset this month’s activity** soft-deletes every live purchase in
+  the current calendar month (from your account timezone). Monthly limits are
+  left unchanged. Confirm before running; there is no restore UI.
 
 ## Run locally
 

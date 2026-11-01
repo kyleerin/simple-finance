@@ -477,6 +477,24 @@ footer {
   border-radius: 20px;
   background: var(--surface);
 }
+.settings-reset {
+  display: grid;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+.settings-reset .muted {
+  margin: 0;
+  font-size: .95rem;
+}
+.settings-reset form {
+  margin: 0;
+}
+.settings-reset fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
 
 @media (min-width: 640px) {
   main {

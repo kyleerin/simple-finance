@@ -14,7 +14,7 @@ type Field = {
 };
 
 export function ActionForm({
-  action, fields = [], hidden = {}, label, secondary = false, confirm,
+  action, fields = [], hidden = {}, label, secondary = false, danger = false, confirm,
   clearOnSuccess = false,
 }: {
   action: (state: ActionState, data: FormData) => Promise<ActionState>;
@@ -22,6 +22,7 @@ export function ActionForm({
   hidden?: Record<string, string>;
   label: string;
   secondary?: boolean;
+  danger?: boolean;
   confirm?: string;
   clearOnSuccess?: boolean;
 }) {
@@ -62,7 +63,7 @@ export function ActionForm({
             )}
           </label>
         ))}
-        <button type="submit" className={secondary ? "secondary" : undefined}>
+        <button type="submit" className={danger ? "danger" : secondary ? "secondary" : undefined}>
           {pending ? "Saving…" : label}
         </button>
       </fieldset>
