@@ -433,10 +433,14 @@ footer {
   box-shadow: inset 0 0 0 2px var(--brand);
 }
 .settings-bar {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
   padding: 0 var(--pad) max(12px, env(safe-area-inset-bottom, 0px));
   margin: 12px 0 0;
+}
+.settings-bar[open] {
+  flex-direction: column-reverse;
 }
 .settings-bar > .settings-button {
   list-style: none;
@@ -462,7 +466,6 @@ footer {
 .settings-menu {
   display: grid;
   gap: 12px;
-  order: -1;
   padding: 16px;
   border: 1px solid var(--line);
   border-radius: 20px;
