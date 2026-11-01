@@ -11,7 +11,7 @@ export function SpendingChart({ categories, currency }: { categories: CategorySu
           <svg viewBox="0 0 200 200" role="img" aria-label="Spending pie chart. Exact amounts and percentages are in the breakdown below.">
             {slices.length === 1
               ? <circle cx="100" cy="100" r="90" fill={slices[0].color} />
-              : slices.map((slice) => <path key={slice.id} d={slice.path} fill={slice.color} stroke="white" strokeWidth="1" />)}
+              : slices.map((slice) => <path key={slice.id} d={slice.path} fill={slice.color} stroke="currentColor" strokeWidth="1" />)}
           </svg>
           <figcaption>Actual spending only—not unspent budget. Includes archived categories.</figcaption>
           <table>

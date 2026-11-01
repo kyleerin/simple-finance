@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import "./globals.css";
+import { ThemeToggle } from "./theme-toggle";
+import { themeBootScript } from "./theme";
 
 export const metadata: Metadata = {
   title: "Simple Finance",
@@ -11,12 +14,17 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  colorScheme: "light dark",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body><main>{children}</main></body>
+    <html lang="en" suppressHydrationWarning>
+      <body>
+        <Script id="theme-boot" strategy="beforeInteractive">{themeBootScript}</Script>
+        <div className="theme-bar"><ThemeToggle /></div>
+        <main>{children}</main>
+      </body>
     </html>
   );
 }
