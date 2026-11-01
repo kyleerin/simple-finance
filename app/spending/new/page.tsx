@@ -15,7 +15,7 @@ export default async function AddSpending() {
   ]);
   return (
     <section className="card screen">
-      <Link className="back-link" href="/">← Budget</Link>
+      <Link className="back-link" href="/">← Home</Link>
       <p className="eyebrow">SIMPLE FINANCE</p>
       <h1>Add spending</h1>
       {!profile || error ? (
@@ -26,7 +26,7 @@ export default async function AddSpending() {
       ) : (
         <div className="action-stack">
           <p>Create or restore a category on your budget before recording spending.</p>
-          <Link className="primary-link" href="/">Go to budget</Link>
+          <Link className="primary-link" href="/budget">Go to budget</Link>
         </div>
       )}
     </section>

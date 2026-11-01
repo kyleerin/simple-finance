@@ -38,7 +38,7 @@ export async function addCategory(_: ActionState, data: FormData): Promise<Actio
   catch (error) { return { error: (error as Error).message }; }
   const { error } = await supabase.from("categories").insert({ owner_id: user.id, name });
   if (error) return failure(error);
-  revalidatePath("/");
+  revalidatePath("/", "layout");
   return { success: "Category added." };
 }
 
@@ -68,7 +68,7 @@ export async function changeCategory(_: ActionState, data: FormData): Promise<Ac
     if (error) return failure(error);
     if (!changed?.length) return { error: "Category no longer exists. Reload the page." };
   }
-  revalidatePath("/");
+  revalidatePath("/", "layout");
   return { success: operation === "delete" ? "Category deleted." : "Category updated." };
 }
 
@@ -90,7 +90,7 @@ export async function saveLimit(_: ActionState, data: FormData): Promise<ActionS
       { onConflict: "category_id,month" },
     );
   if (error) return failure(error);
-  revalidatePath("/");
+  revalidatePath("/", "layout");
   return { success: amount === null ? "Limit cleared. Now not set." : "Monthly limit saved." };
 }
 
@@ -101,7 +101,7 @@ export async function copyLimits(_: ActionState, data: FormData): Promise<Action
   catch (error) { return { error: (error as Error).message }; }
   const { data: count, error } = await supabase.rpc("copy_previous_limits", { target_month: month });
   if (error) return failure(error);
-  revalidatePath("/");
+  revalidatePath("/", "layout");
   return { success: `${count} limit${count === 1 ? "" : "s"} copied. Existing limits were left unchanged.` };
 }
 
@@ -119,6 +119,6 @@ export async function savePreferences(_: ActionState, data: FormData): Promise<A
   }
   if (error) return failure(error);
   if (!changed?.length) return { error: "Account profile is missing. Check database setup." };
-  revalidatePath("/");
+  revalidatePath("/", "layout");
   return { success: "Preferences saved." };
 }
