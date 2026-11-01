@@ -31,10 +31,22 @@ ownership and unique category/month limits in PostgreSQL. No rollover. Offer
 "Copy previous month's limits" without overwriting existing limits silently.
 Missing limits remain explicitly "Not set."
 
+Implemented on `feature/phase-2-budget-setup` for preview acceptance. Includes
+restoring archived categories and deleting categories only when no monthly limits
+reference them. Account preferences set currency/timezone; defaults USD/UTC.
+Currency changes are blocked while any monthly limits exist.
+
+Limits for archived categories remain visible and included in historical monthly
+planned totals. Copying skips archived categories and never overwrites existing
+target-month limits, including zero. A new month stays unset until explicitly
+configured or copied.
+
 ## Phase 3 — Spending entry
 
 Amount and category required; date defaults to today and is editable; note optional.
 Positive purchase amounts only initially. Server validation and idempotent inserts.
+Extend currency-change and category-deletion guards to include spending records,
+not just monthly limits, before adding spending.
 
 ## Phase 4 — Overview and activity
 
@@ -61,5 +73,6 @@ backup/restore verification, and end-to-end security and budget tests.
 ## Branch and review policy
 
 For each phase, create a separate feature branch and open a GitHub PR to the
-default branch. Do not merge without explicit authorization. Implement phase 1
-only for now; use its Vercel preview for owner acceptance before continuing.
+default branch. Do not merge without explicit authorization. Phase 1
+was accepted on Vercel and merged by the owner. Implement phase 2 only for now;
+use its Vercel preview for owner acceptance before continuing.
