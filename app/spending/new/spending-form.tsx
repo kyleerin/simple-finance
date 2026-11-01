@@ -1,18 +1,22 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { formatMoney } from "../../../lib/budget";
 import { restoreSpendingSession, today, type SpendingDraft, type SpendingReceipt } from "../../../lib/spending";
 
-export function SpendingForm({ userId, currency, date, timeZone, categories, submissionId }: {
+export function SpendingForm({ userId, currency, date, timeZone, categories, submissionId, embedded = false }: {
   userId: string;
   currency: string;
   date: string;
   timeZone: string;
   categories: { id: string; name: string }[];
   submissionId: string;
+  embedded?: boolean;
 }) {
+  const router = useRouter();
+  const amountRef = useRef<HTMLInputElement>(null);
   const blank = (id: string, purchaseDate = date): SpendingDraft => ({ id, amount: "", categoryId: "", purchaseDate, note: "" });
   const [draft, setDraft] = useState<SpendingDraft>(() => blank(submissionId));
   const [ready, setReady] = useState(false);
@@ -43,6 +47,10 @@ export function SpendingForm({ userId, currency, date, timeZone, categories, sub
     }
   }, [draft, receipt, changedRetry, ready, storageKey]);
 
+  useEffect(() => {
+    if (ready && !receipt && !pending) amountRef.current?.focus();
+  }, [ready, receipt, pending, draft.id]);
+
   const update = (key: keyof SpendingDraft, value: string) => setDraft((old) => ({ ...old, [key]: value }));
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -67,6 +75,7 @@ export function SpendingForm({ userId, currency, date, timeZone, categories, sub
         } catch {}
         setReceipt(result.receipt);
         setChangedRetry(result.changedRetry === true);
+        router.refresh();
         // Keep the ID until an explicit "Add another" so a reload after success
         // can safely retrieve the same receipt, rather than record it twice.
       }
@@ -86,6 +95,7 @@ export function SpendingForm({ userId, currency, date, timeZone, categories, sub
     setChangedRetry(false);
     setDeletedSubmission(false);
     setError("");
+    router.refresh();
   }
 
   if (receipt) {
@@ -100,7 +110,8 @@ export function SpendingForm({ userId, currency, date, timeZone, categories, sub
         <p className="muted">This is your saved confirmation. Activity shows current details if the purchase was later edited or deleted.</p>
         <div className="home-actions compact">
           <button type="button" onClick={startAnother}>Add another purchase</button>
-          <Link className="nav-link" href="/">Back to home</Link>
+          {!embedded && <Link className="nav-link" href="/">Back to home</Link>}
+          {embedded && <Link className="nav-link" href={`/activity?month=${receipt.purchaseDate.slice(0, 7)}`}>View activity</Link>}
           <Link className="nav-link" prefetch={false} href={`/spending/${receipt.id}/edit`}>View current purchase or edit</Link>
         </div>
       </div>
@@ -111,7 +122,7 @@ export function SpendingForm({ userId, currency, date, timeZone, categories, sub
     <form onSubmit={submit} className="action-stack">
       <fieldset disabled={pending || !ready}>
         <label>Amount ({currency})
-          <input name="amount" inputMode="decimal" autoComplete="off" required
+          <input ref={amountRef} name="amount" inputMode="decimal" autoComplete="off" required autoFocus
             value={draft.amount} onChange={(event) => update("amount", event.target.value)} />
         </label>
         <fieldset className="category-picker">
