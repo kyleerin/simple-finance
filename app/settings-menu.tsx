@@ -1,10 +1,15 @@
 "use client";
 
+import { usePathname } from "next/navigation";
+import { showAppSettings } from "../lib/settings";
 import { ActionForm } from "./action-form";
 import { resetThisMonthActivity } from "./reset-activity-action";
 import { ThemeToggle } from "./theme-toggle";
 
 export function SettingsMenu() {
+  const pathname = usePathname();
+  if (!showAppSettings(pathname)) return null;
+
   return (
     <details className="settings-bar">
       <summary className="settings-button">Settings</summary>
